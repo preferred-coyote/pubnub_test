@@ -1,54 +1,72 @@
 <!-- dial.html -->
 
 <!-- Video Output Zone -->
+<html>
+  <body>
+    <form>
+      Peer: <input type="text" name="textid" id="textid"><br>
+    </form>
+    <button onclick="dialPeer(document.getElementById('textid').value)" id="callbutton" disabled>Call User</button>
+    <!-- <button onclick="dialPeer('yan')" id="callbutton" disabled>Call Yan</button> -->
+    <button onclick="hangUp()" id="hangupbutton">Hang Up</button>
+    <button onclick="acceptCall()" id="button" disabled>Accept</button>
+    <div id="video-out"></div>
+    <!-- <video autoplay controls id='uservideo'></video> -->
+    <div id="display-div"></div>
+    <video autoplay id='uservideo'></video>
+    <video autoplay id='peervideo'></video>
+    <!-- Libs and Scripts -->
+    <script src="https://cdn.pubnub.com/pubnub.min.js"></script>
+    <script src="http://stephenlb.github.io/webrtc-sdk/js/webrtc.js"></script>
+    <script>
+      var video = document.querySelector('#uservideo');
+      var peervideo = document.querySelector('#peervideo');
+      var session;
+      var dialPeer = function(peer) {
+        session = phone.dial(peer);
+      };
+      var hangUp = function() {
+        phone.hangup();
+      }
+      var ready = false;
+      var acceptCall = function() {
+        ready = true;
+      }
+      // ~Warning~ You must get your own API Keys for non-demo purposes.
+      // ~Warning~ Get your PubNub API Keys: http://www.pubnub.com/get-started/
+      // The phone *number* can by any string value
+      var phone = PHONE({
+          number        : 'alex',
+          publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
+          subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
+          media : { audio : true, video : true },
+          ssl           : true
+      });
 
-<div id="video-out"></div>
-<!-- <video autoplay controls id='uservideo'></video> -->
-<div id="display-div"></div>
-<video autoplay id='uservideo'></video>
-<video autoplay id='peervideo'></video>
-<!-- Libs and Scripts -->
-<script src="https://cdn.pubnub.com/pubnub.min.js"></script>
-<script src="http://stephenlb.github.io/webrtc-sdk/js/webrtc.js"></script>
-<script>
-(function(){
-    var video = document.querySelector('#uservideo');
-    var peervideo = document.querySelector('#peervideo');
-    // ~Warning~ You must get your own API Keys for non-demo purposes.
-    // ~Warning~ Get your PubNub API Keys: http://www.pubnub.com/get-started/
-    // The phone *number* can by any string value
-    var phone = PHONE({
-        number        : 'alex',
-        publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
-        subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
-        media : { audio : true, video : false },
-        ssl           : true
-    });
+      // As soon as the phone is ready we can make calls
+      phone.ready(function(){
+          console.log('ready');
+          //var session = dialPeer('yan');
+          document.getElementById('callbutton').disabled = false;
+      });
 
-    // As soon as the phone is ready we can make calls
-    phone.ready(function(){
-        console.log('ready');
-        // Dial a Number and get the Call Session
-        // For simplicity the phone number is the same for both caller/receiver.
-        // you should use different phone numbers for each user.
-        var session = phone.dial('yan');
-
-    });
-
-    // When Call Comes In or is to be Connected
-    phone.receive(function(session){
+      // When Call Comes In or is to be Connected
+      phone.receive(function(session){
         console.log('received');
         // Display Your Friend's Live Video
+        document.getElementById('button').disabled = false;
         session.connected(function(session){
-            console.log(session);
-            peervideo.src = session.video.src;
-            peervideo.play();
-            video.src = phone.video.src;
-            video.play();
-            //document.getElementById('video-out').appendChild(session.video);
-            //document.getElementById('display-div').appendChild(phone.video);
+          console.log(session);
+          peervideo.src = session.video.src;
+          peervideo.play();
+          video.src = phone.video.src;
+          video.play();
         });
+        session.ended(function(session) {
+          console.log('Session ended. Goodbye!');
+        })
+      });
 
-    });
-
-})();</script>
+    </script>
+  </body>
+</html>

@@ -20,7 +20,9 @@
     </div>
     <div id='onlineusers'>Other online users</div>
     <div id='herenow'></div>
-
+    <button onclick="callRandom()" id="randbutton" disabled>Random Call!</button>
+    <video autoplay id='uservideo'></video>
+    <video autoplay id='peervideo'></video>
     <!-- <script src="https://cdn.pubnub.com/pubnub.min.js"></script> -->
     <script src="http://cdn.pubnub.com/pubnub-3.7.1.min.js"></script> 
     <script src="http://stephenlb.github.io/webrtc-sdk/js/webrtc.js"></script>
@@ -32,19 +34,15 @@
                                navigator.mozGetUserMedia    ||
                                navigator.msGetUserMedia;
 
-
-
-      /*var UUID = PUBNUB.db.get('session') || (function(){ 
-        var uuid = PUBNUB.uuid(); 
-        PUBNUB.db.set('session', uuid);
-        return uuid; 
-      })();*/
       var pubnub;
+      var userlist = {};
+      var username = document.getElementById('username').value;
 
       function sub(username) {
         document.getElementById('subscribe').disabled = true;
         document.getElementById('subscribe').value = 'Subscribed';
         document.getElementById('username').disabled = true;
+        document.getElementById('randbutton').disabled = false;
 
         pubnub = PUBNUB.init({                                  
           publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
@@ -57,9 +55,8 @@
           message : function(message,env,channel){
             console.log("Message Received.");
             //console.log("Username: ", username);
-            console.log("Channel: ", channel);
+            // console.log("Channel: ", channel);
             console.log("Message: ", JSON.stringify(message));
-            console.log("Raw Envelope: ", JSON.stringify(env));
           },
           state: {
               name: username,
@@ -81,6 +78,7 @@
                 }).filter(function(user) {
                   return user !== username; 
                 }).forEach(function(element){
+                  userlist[element] = 'here';
                   var newcontent = document.createElement('div');
                   newcontent.innerHTML = element;
                   newcontent.className = 'onlineuser';
@@ -89,12 +87,12 @@
               }
             });  
           },
-          heartbeat: 30
+          heartbeat: 30,
+          connect: phoneinitial
         });
         // document.getElementById('uuid').innerHTML = username; 
-        console.log('Subscribed');
+        console.log('Subscribed to preferred-coyote!');
         // console.log(typeof pubnub);
-        
       };
  
 
@@ -132,6 +130,75 @@
           count: 100,
           callback: function(m) { console.log(m) }
         })
+      }
+
+      var video = document.querySelector('#uservideo');
+      var peervideo = document.querySelector('#peervideo');
+      var session;
+      var dialPeer = function(peer) {
+        session = phone.dial(peer);
+      };
+      var hangUp = function() {
+        phone.hangup();
+      }
+      var ready = false;
+      var acceptCall = function() {
+        ready = true;
+      }
+      // ~Warning~ You must get your own API Keys for non-demo purposes.
+      // ~Warning~ Get your PubNub API Keys: http://www.pubnub.com/get-started/
+      // The phone *number* can by any string value
+      
+      function phoneinitial(username) {
+        var phone = PHONE({
+            number        : username,
+            publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
+            subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
+            media : { audio : true, video : true },
+            ssl           : true
+        });
+
+        // As soon as the phone is ready we can make calls
+        phone.ready(function(){
+            console.log('ready');
+            //var session = dialPeer('yan');
+                    var total = Object.keys(userlist).length;
+        var randomnum = Math.floor(Math.random()*total);
+        var randomUser = Object.keys(userlist)[randomnum];
+        console.log('randomuser is ', randomUser);
+        if (userlist[randomUser] === 'here') {
+          session = phone.dial(randomUser);
+        }
+
+            document.getElementById('callbutton').disabled = false;
+        });
+
+        // When Call Comes In or is to be Connected
+        phone.receive(function(session){
+          console.log('received');
+          // Display Your Friend's Live Video
+          document.getElementById('button').disabled = false;
+          session.connected(function(session){
+            console.log(session);
+            peervideo.src = session.video.src;
+            peervideo.play();
+            video.src = phone.video.src;
+            video.play();
+          });
+          session.ended(function(session) {
+            console.log('Session ended. Goodbye!');
+          })
+        });
+      };
+
+      function callRandom() {
+        var total = Object.keys(userlist).length;
+        var randomnum = Math.floor(Math.random()*total);
+        var randomUser = Object.keys(userlist)[randomnum];
+        console.log('randomuser is ', randomUser);
+        if (userlist[randomUser] === 'here') {
+          session = phone.dial(randomUser);
+        }
       }
 
     </script>
