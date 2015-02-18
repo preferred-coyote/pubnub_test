@@ -1,0 +1,149 @@
+<html>
+  <head>
+  </head>
+  <body>
+<!-- Include the PubNub Library -->
+    <div id='usersubscribe' style='margin:10px'>
+      <input type="text" name="username" placeholder="Username" id="username">
+      <input type="button" value="Subscribe" onclick="sub(document.getElementById('username').value)" id="subscribe">
+    </div>
+    <div id='postmessage' style='margin:10px'>
+      <input type="text" name="message" placeholder="Message" id="message" size='50'>
+      <div>
+        <input type="button" value="Post Message" onclick="pub(document.getElementById('username').value, document.getElementById('message').value)" style='margin: 5px 0px 5px 0px'>
+      </div>
+    </div>  
+    <div id='buttons' style='margin:10px'>  
+      <input type="button" value="Here Now" onclick="herenow()">
+      <input type="button" value="History" onclick="history()">
+      <input type="button" value="Leave Room" onclick="leaveroom()">
+    </div>
+    <div id='onlineusers'>Other online users</div>
+    <div id='herenow'></div>
+
+    <!-- <script src="https://cdn.pubnub.com/pubnub.min.js"></script> -->
+    <script src="http://cdn.pubnub.com/pubnub-3.7.1.min.js"></script> 
+    <script src="http://stephenlb.github.io/webrtc-sdk/js/webrtc.js"></script>
+     
+    <!-- Instantiate PubNub -->
+    <script>
+      navigator.getUserMedia = navigator.getUserMedia       ||
+                               navigator.webkitGetUserMedia ||
+                               navigator.mozGetUserMedia    ||
+                               navigator.msGetUserMedia;
+
+
+
+      /*var UUID = PUBNUB.db.get('session') || (function(){ 
+        var uuid = PUBNUB.uuid(); 
+        PUBNUB.db.set('session', uuid);
+        return uuid; 
+      })();*/
+      var pubnub;
+
+      function sub(username) {
+        document.getElementById('subscribe').disabled = true;
+        document.getElementById('subscribe').value = 'Subscribed';
+        document.getElementById('username').disabled = true;
+
+        pubnub = PUBNUB.init({                                  
+          publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
+          subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
+          uuid : username || 'anonymous'
+        });
+
+        pubnub.subscribe({                                      
+          channel : 'preferred-coyote',
+          message : function(message,env,channel){
+            console.log("Message Received.");
+            //console.log("Username: ", username);
+            console.log("Channel: ", channel);
+            console.log("Message: ", JSON.stringify(message));
+            console.log("Raw Envelope: ", JSON.stringify(env));
+          },
+          state: {
+              name: username,
+              timestamp: new Date()
+          },
+          presence: function(m) {
+            console.log('presence');
+            console.log(m);
+            pubnub.here_now({
+              channel: 'preferred-coyote',
+              state: true,
+              callback: function(m) {
+                var myNode = document.getElementById('herenow');
+                while (myNode.firstChild) {
+                    myNode.removeChild(myNode.firstChild);
+                }
+                var usershere = m.uuids.map(function(uuidobj){
+                  return uuidobj.uuid;
+                }).filter(function(user) {
+                  return user !== username; 
+                }).forEach(function(element){
+                  var newcontent = document.createElement('div');
+                  newcontent.innerHTML = element;
+                  newcontent.className = 'onlineuser';
+                  document.getElementById('herenow').appendChild(newcontent);
+                });
+              }
+            });  
+          },
+          heartbeat: 30
+        });
+        // document.getElementById('uuid').innerHTML = username; 
+        console.log('Subscribed');
+        // console.log(typeof pubnub);
+        
+      };
+ 
+
+
+      function pub(username, message) {
+        pubnub.publish({                                     
+          channel : 'preferred-coyote',
+          message : username + ': ' + message,
+          callback: function(m){ console.log(m) }
+        })
+      }
+
+      function herenow() {
+        pubnub.here_now({
+          channel: 'preferred-coyote',
+          state: true,
+          callback: function(msg) {
+            console.log(msg);
+          }
+        });
+      }
+
+      function leaveroom() {
+        document.getElementById('subscribe').disabled = false;
+        document.getElementById('subscribe').value = 'Subscribe';
+        document.getElementById('username').disabled = false;
+        pubnub.unsubscribe({
+          channel: 'preferred-coyote'
+        });
+      }
+
+      function history() {
+        pubnub.history({
+          channel: 'preferred-coyote',
+          count: 100,
+          callback: function(m) { console.log(m) }
+        })
+      }
+
+    </script>
+    <style>
+      .onlineuser {
+        margin : 15px;
+        display : block;
+        width : 200px;
+        height: 40px;
+        padding: 5px;
+        border: 1px solid black;
+      }
+    </style>
+  </body>
+</html>
