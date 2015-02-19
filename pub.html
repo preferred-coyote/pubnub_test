@@ -12,7 +12,6 @@
     </div>
     <div id='onlineusers'>Other online users</div>
     <div id='herenow'></div>
-    <button onclick="callRandom()" id="randbutton" disabled>Random Call!</button>
     <video autoplay id='uservideo'></video>
     <video autoplay id='peervideo'></video>
     <!-- <script src="https://cdn.pubnub.com/pubnub.min.js"></script> -->
@@ -38,21 +37,18 @@
           subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
           uuid : username || 'anonymous'
         });
-
         pubnub.subscribe({                                      
           channel : 'preferred-coyote',
           message : function(message,env,channel){
             console.log("Message Received.");
-            //console.log("Username: ", username);
-            // console.log("Channel: ", channel);
             console.log("Message: ", JSON.stringify(message));
           },
           state: {
               name: username,
-              timestamp: new Date()
+              timestamp: new Date(),
+              available: true
           },
           presence: function(m) {
-            console.log('presence');
             console.log(m);
             pubnub.here_now({
               channel: 'preferred-coyote',
@@ -82,9 +78,7 @@
             phoneinitial(randomholder);
           }
         });
-
         console.log('Subscribed to preferred-coyote!');
-        // console.log(typeof pubnub);
       };
 
 
@@ -98,22 +92,48 @@
         });
       }
 
-      function leaveroom() {
-        pubnub.unsubscribe({
-          channel: 'preferred-coyote'
-        });
+      function avail(username) {
+        // Get state for uuid on channel
+         // pubnub.state({
+         //   channel: "preferred-coyote",
+         //   uuid: username,
+         //   available: false,
+         //   callback: function(m){console.log(JSON.stringify(m))}
+         // });
+         
+         // Set state - set value of key "Full"
+         pubnub.state({
+           channel: "preferred-coyote",
+           uuid: username,
+           state: {available : true},
+           callback: function(m){console.log(JSON.stringify(m))}
+         });
+        // pubnub.state({state: {"available" : true}});
+        console.log('available');
+      }
+
+      function inChat() {
+        // pubnub.state({
+        //    channel: "preferred-coyote",
+        //    uuid: username,
+        //    available: true,
+        //    callback: function(m){console.log(JSON.stringify(m))}
+        //  });
+         
+         // Set state - set value of key "Full"
+         pubnub.state({
+           channel: "preferred-coyote",
+           uuid: username,
+           state: {available : false},
+           callback: function(m){console.log(JSON.stringify(m))}
+         });
+        console.log('in chat');
       }
 
       var video = document.querySelector('#uservideo');
       var peervideo = document.querySelector('#peervideo');
       var session;
-      var dialPeer = function(peer) {
-        session = phone.dial(peer);
-      };
-      // ~Warning~ You must get your own API Keys for non-demo purposes.
-      // ~Warning~ Get your PubNub API Keys: http://www.pubnub.com/get-started/
-      // The phone *number* can by any string value
-      
+
       function phoneinitial(username) {
         console.log('username: ', username);
         var phone = PHONE({
@@ -121,20 +141,23 @@
             publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
             subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
             media : { audio : true, video : true },
-            ssl           : true
+            ssl           : false
         });
 
         // As soon as the phone is ready we can make calls
         phone.ready(function(){
             console.log('ready');
-            //var session = dialPeer('yan');
+            console.log('username in phone.ready is: ', username);
             var total = Object.keys(userlist).length;
             var randomnum = Math.floor(Math.random()*total);
             var randomUser = Object.keys(userlist)[randomnum];
             console.log('randomuser is ', randomUser);
-            if (userlist[randomUser] === 'here') {
+            if (userlist[randomUser]) {
               console.log('should dial', randomUser);
               session = phone.dial(randomUser);
+              inChat(username);
+            } else {
+              console.log('no other users in channel');
             }
             // document.getElementById('callbutton').disabled = false;
         });
@@ -142,6 +165,7 @@
         // When Call Comes In or is to be Connected
         phone.receive(function(session){
           console.log('received');
+          console.log('username in receive:', username);
           // Display Your Friend's Live Video
           session.connected(function(session){
             console.log(session);
@@ -149,22 +173,14 @@
             peervideo.play();
             video.src = phone.video.src;
             video.play();
+            inChat(username);
           });
           session.ended(function(session) {
             console.log('Session ended. Goodbye!');
+            avail(username);
           })
         });
       };
-
-      function callRandom() {
-        var total = Object.keys(userlist).length;
-        var randomnum = Math.floor(Math.random()*total);
-        var randomUser = Object.keys(userlist)[randomnum];
-        console.log('randomuser is ', randomUser);
-        if (userlist[randomUser] === 'here') {
-          session = phone.dial(randomUser);
-        }
-      }
 
     </script>
     <style>
