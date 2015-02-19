@@ -7,16 +7,8 @@
       <input type="text" name="username" placeholder="Username" id="username">
       <input type="button" value="Subscribe" onclick="sub(document.getElementById('username').value)" id="subscribe">
     </div>
-    <div id='postmessage' style='margin:10px'>
-      <input type="text" name="message" placeholder="Message" id="message" size='50'>
-      <div>
-        <input type="button" value="Post Message" onclick="pub(document.getElementById('username').value, document.getElementById('message').value)" style='margin: 5px 0px 5px 0px'>
-      </div>
-    </div>  
     <div id='buttons' style='margin:10px'>  
       <input type="button" value="Here Now" onclick="herenow()">
-      <input type="button" value="History" onclick="history()">
-      <input type="button" value="Leave Room" onclick="leaveroom()">
     </div>
     <div id='onlineusers'>Other online users</div>
     <div id='herenow'></div>
@@ -39,11 +31,8 @@
       var username = document.getElementById('username').value;
 
       function sub(username) {
-        document.getElementById('subscribe').disabled = true;
-        document.getElementById('subscribe').value = 'Subscribed';
-        document.getElementById('username').disabled = true;
-        document.getElementById('randbutton').disabled = false;
-
+        console.log('username in sub: ', username);
+        var randomholder = username;
         pubnub = PUBNUB.init({                                  
           publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
           subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
@@ -88,22 +77,16 @@
             });  
           },
           heartbeat: 30,
-          connect: phoneinitial
+          connect: function(username) {
+            console.log('username in subscribe: ', randomholder);
+            phoneinitial(randomholder);
+          }
         });
-        // document.getElementById('uuid').innerHTML = username; 
+
         console.log('Subscribed to preferred-coyote!');
         // console.log(typeof pubnub);
       };
- 
 
-
-      function pub(username, message) {
-        pubnub.publish({                                     
-          channel : 'preferred-coyote',
-          message : username + ': ' + message,
-          callback: function(m){ console.log(m) }
-        })
-      }
 
       function herenow() {
         pubnub.here_now({
@@ -116,20 +99,9 @@
       }
 
       function leaveroom() {
-        document.getElementById('subscribe').disabled = false;
-        document.getElementById('subscribe').value = 'Subscribe';
-        document.getElementById('username').disabled = false;
         pubnub.unsubscribe({
           channel: 'preferred-coyote'
         });
-      }
-
-      function history() {
-        pubnub.history({
-          channel: 'preferred-coyote',
-          count: 100,
-          callback: function(m) { console.log(m) }
-        })
       }
 
       var video = document.querySelector('#uservideo');
@@ -138,18 +110,12 @@
       var dialPeer = function(peer) {
         session = phone.dial(peer);
       };
-      var hangUp = function() {
-        phone.hangup();
-      }
-      var ready = false;
-      var acceptCall = function() {
-        ready = true;
-      }
       // ~Warning~ You must get your own API Keys for non-demo purposes.
       // ~Warning~ Get your PubNub API Keys: http://www.pubnub.com/get-started/
       // The phone *number* can by any string value
       
       function phoneinitial(username) {
+        console.log('username: ', username);
         var phone = PHONE({
             number        : username,
             publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
@@ -167,7 +133,7 @@
             var randomUser = Object.keys(userlist)[randomnum];
             console.log('randomuser is ', randomUser);
             if (userlist[randomUser] === 'here') {
-              console.log('should dial');
+              console.log('should dial', randomUser);
               session = phone.dial(randomUser);
             }
             // document.getElementById('callbutton').disabled = false;
