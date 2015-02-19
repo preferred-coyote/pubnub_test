@@ -1,5 +1,6 @@
 <html>
   <head>
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.0/css/foundation.css">
   </head>
   <body>
 <!-- Include the PubNub Library -->
@@ -10,20 +11,17 @@
     <div id='buttons' style='margin:10px'>  
       <input type="button" value="Here Now" onclick="herenow()">
     </div>
-    <div id='onlineusers'>Other online users</div>
-    <div id='herenow'></div>
+    <div class="row">
+      <div id='herenow' class="large-6 columns"></div>
+      <div id='hereandavailable' class="large-6 columns"></div>
+    </div>
     <video autoplay id='uservideo'></video>
     <video autoplay id='peervideo'></video>
     <!-- <script src="https://cdn.pubnub.com/pubnub.min.js"></script> -->
     <script src="http://cdn.pubnub.com/pubnub-3.7.1.min.js"></script> 
     <script src="http://stephenlb.github.io/webrtc-sdk/js/webrtc.js"></script>
-     
     <!-- Instantiate PubNub -->
     <script>
-      navigator.getUserMedia = navigator.getUserMedia       ||
-                               navigator.webkitGetUserMedia ||
-                               navigator.mozGetUserMedia    ||
-                               navigator.msGetUserMedia;
 
       var pubnub;
       var userlist = {};
@@ -40,8 +38,7 @@
         pubnub.subscribe({                                      
           channel : 'preferred-coyote',
           message : function(message,env,channel){
-            console.log("Message Received.");
-            console.log("Message: ", JSON.stringify(message));
+            console.log("Message Received: ", JSON.stringify(message));
           },
           state: {
               name: username,
@@ -54,33 +51,63 @@
               channel: 'preferred-coyote',
               state: true,
               callback: function(m) {
-                var myNode = document.getElementById('herenow');
-                while (myNode.firstChild) {
-                    myNode.removeChild(myNode.firstChild);
-                }
-                var usershere = m.uuids.map(function(uuidobj){
-                  return uuidobj.uuid;
-                }).filter(function(user) {
-                  return user !== username; 
-                }).forEach(function(element){
-                  userlist[element] = 'here';
-                  var newcontent = document.createElement('div');
-                  newcontent.innerHTML = element;
-                  newcontent.className = 'onlineuser';
-                  document.getElementById('herenow').appendChild(newcontent);
-                });
+                showHeres(m, username);
               }
             });  
           },
           heartbeat: 30,
           connect: function(username) {
-            console.log('username in subscribe: ', randomholder);
             phoneinitial(randomholder);
           }
         });
         console.log('Subscribed to preferred-coyote!');
       };
 
+      function showHeres (userobj, username) {
+        showUsersHere(userobj, username);
+        showUsersAvailable(userobj, username);
+      }
+
+      function showUsersHere(userobj, username) {
+        console.log('username in userobj is: ', username);
+        var myNode = document.getElementById('herenow');
+        while (myNode.firstChild) {
+            myNode.removeChild(myNode.firstChild);
+        }
+        var usershere = userobj.uuids.map(function(uuidobj){
+          return uuidobj.uuid;
+        }).filter(function(user) {
+          return user !== username; 
+        }).forEach(function(element){
+          var newcontent = document.createElement('div');
+          newcontent.innerHTML = element;
+          newcontent.className = 'onlineuser';
+          document.getElementById('herenow').appendChild(newcontent);
+        });
+      }
+
+      function showUsersAvailable(userobj, username) {
+        var myNode = document.getElementById('hereandavailable');
+        while (myNode.firstChild) {
+            myNode.removeChild(myNode.firstChild);
+        }
+        var templist = {};
+        var usershere = userobj.uuids.filter(function(uuidobj){
+          return uuidobj.state.available;
+          // if (uuidobj.state.available === true) return uuidobj.uuid;
+        }).map(function(uuidobj){
+          return uuidobj.uuid;
+        }).filter(function(user) {
+          return user !== username; 
+        }).forEach(function(element){
+          templist[element] = 'here';
+          var newcontent = document.createElement('div');
+          newcontent.innerHTML = element;
+          newcontent.className = 'onlineavailuser';
+          document.getElementById('hereandavailable').appendChild(newcontent);
+        });
+        userlist = templist;
+      }
 
       function herenow() {
         pubnub.here_now({
@@ -137,28 +164,28 @@
       function phoneinitial(username) {
         console.log('username: ', username);
         var phone = PHONE({
-            number        : username,
-            publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
-            subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
-            media : { audio : true, video : true },
-            ssl           : false
+          number        : username,
+          publish_key   : 'pub-c-d0f394d5-41a9-47aa-ae8d-5629f6cb46c7',
+          subscribe_key : 'sub-c-2bcfffc6-b3d1-11e4-9a8b-0619f8945a4f',
+          media : { audio : true, video : true },
+          ssl           : false
         });
 
         // As soon as the phone is ready we can make calls
         phone.ready(function(){
-            console.log('ready');
-            console.log('username in phone.ready is: ', username);
-            var total = Object.keys(userlist).length;
-            var randomnum = Math.floor(Math.random()*total);
-            var randomUser = Object.keys(userlist)[randomnum];
-            console.log('randomuser is ', randomUser);
-            if (userlist[randomUser]) {
-              console.log('should dial', randomUser);
-              session = phone.dial(randomUser);
-              inChat(username);
-            } else {
-              console.log('no other users in channel');
-            }
+          console.log('ready');
+          console.log('username in phone.ready is: ', username);
+          var total = Object.keys(userlist).length;
+          var randomnum = Math.floor(Math.random()*total);
+          var randomUser = Object.keys(userlist)[randomnum];
+          console.log('randomuser is ', randomUser);
+          if (userlist[randomUser]) {
+            console.log('should dial', randomUser);
+            session = phone.dial(randomUser);
+            inChat(username);
+          } else {
+            console.log('no other users in channel');
+          }
             // document.getElementById('callbutton').disabled = false;
         });
 
@@ -183,15 +210,5 @@
       };
 
     </script>
-    <style>
-      .onlineuser {
-        margin : 15px;
-        display : block;
-        width : 200px;
-        height: 40px;
-        padding: 5px;
-        border: 1px solid black;
-      }
-    </style>
   </body>
 </html>
